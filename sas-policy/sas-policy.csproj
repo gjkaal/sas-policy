@@ -2,23 +2,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFrameworks>netcoreapp2.2;net471;net472</TargetFrameworks>
+        <PackageLicenseFile>Licence.md</PackageLicenseFile>
     </PropertyGroup>
     <PropertyGroup>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Description>Shared Access Signature utility</Description>
-        <Copyright>(c) 2019 - nice2experience.com all right reserverd</Copyright>
+        <Copyright>(c) 2019 - nice2experience.com - all rights reserved</Copyright>
         <PackageTags>authentication sas shared token</PackageTags>
         <NeutralLanguage>en</NeutralLanguage>
         <Authors>GJH Kaal</Authors>
         <Company>nice2experience</Company>
         <PackageReleaseNotes>initial</PackageReleaseNotes>
-        <projectUrl>https://github.com/gjkaal/sas-policy</projectUrl>
+        <RepositoryUrl>https://github.com/gjkaal/sas-policy</RepositoryUrl>
     </PropertyGroup>
 
     <PropertyGroup>
         <VersionPrefix>1.0.2</VersionPrefix>
         <VersionSuffix></VersionSuffix>
-        <IncludeSymbols>true</IncludeSymbols>
+        <IncludeSymbols>false</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <PackageLicenseUrl></PackageLicenseUrl>
     </PropertyGroup>
@@ -29,7 +30,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="License.md" PackagePath="" Pack="true" Visible="false" >
+        <None Include="License.md" PackagePath="" Pack="true" >
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
     </ItemGroup>
