@@ -5,7 +5,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Nice2Experience.SasPolicy
+namespace Nice2Experience.Security.Sas
 {
     public static class SASTokenExtensions
     {
@@ -22,7 +22,7 @@ namespace Nice2Experience.SasPolicy
             if (!string.IsNullOrEmpty(token.Signature)) components.Add($"sig={WebUtility.UrlEncode(token.Signature)}");
             if (token.Expiry > 0) components.Add($"se={token.Expiry}");
             if (!string.IsNullOrEmpty(token.Nonce)) components.Add($"nonce={WebUtility.UrlEncode(token.Nonce)}");
-            if (!string.IsNullOrEmpty(token.SigningKey)) components.Add($"skn={WebUtility.UrlEncode(token.SigningKey)}");
+            if (!string.IsNullOrEmpty(token.SigningKeyName)) components.Add($"skn={WebUtility.UrlEncode(token.SigningKeyName)}");
             if (token.AdditionalValues != null)
             {
                 foreach (var kvp in token.AdditionalValues)

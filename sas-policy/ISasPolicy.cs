@@ -1,4 +1,6 @@
-namespace Nice2Experience.SasPolicy
+using System.Collections.Generic;
+
+namespace Nice2Experience.Security.Sas
 {
     /// <summary>
     ///     Interface ISASPolicy
@@ -21,14 +23,14 @@ namespace Nice2Experience.SasPolicy
         string Skn { get; set; }
 
         /// <summary>
-        ///     Gets or sets the signing key.
+        /// Gets or sets the signing key.
         /// </summary>
         /// <value>The key.</value>
         /// <remarks>no comments</remarks>
         string Key { get; set; }
 
         /// <summary>
-        ///     Gets or sets the name of the type.
+        /// Gets or sets the name of the type.
         /// </summary>
         /// <value>The name of the type.</value>
         /// <remarks>no comments</remarks>
@@ -53,16 +55,11 @@ namespace Nice2Experience.SasPolicy
         int TokenTimeOut { get; set; }
 
         /// <summary>
-        /// Gets or sets the sharding key.
-        /// </summary>
-        /// <value>The tenant.</value>
-        int ShardingKey { get; set; }
-
-        /// <summary>
         /// The permissions requested with this token
         /// </summary>
         Permissions Permissions { get; set; }
 
-
+        /// If any additional keys are required, add them to this list
+        ICollection<string> AdditionalKeys { get; set; }
     }
 }

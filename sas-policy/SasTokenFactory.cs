@@ -4,7 +4,7 @@ using System.Linq;
 using System.Net;
 
 
-namespace Nice2Experience.SasPolicy
+namespace Nice2Experience.Security.Sas
 {
     /// <summary>
     ///     Parses or creates SAS-tokens
@@ -22,14 +22,14 @@ namespace Nice2Experience.SasPolicy
                 additionalList.Add(kvp.Key, kvp.Value);
             var token = new SasTokenParameters
             {
-                SigningKey = args.FirstOrDefault(q => q.Key == "skn").Value,
+                SigningKeyName = args.FirstOrDefault(q => q.Key == "skn").Value,
                 SharedResource = args.FirstOrDefault(q => q.Key == "sr").Value,
                 Expiry = GetInt(args.FirstOrDefault(q => q.Key == "se").Value),
                 Signature = args.FirstOrDefault(q => q.Key == "sig").Value,
                 Nonce = args.FirstOrDefault(q => q.Key == "nonce").Value,
                 AdditionalValues = additionalList
             };
-            token.Invalid = (string.IsNullOrEmpty(token.SigningKey)
+            token.Invalid = (string.IsNullOrEmpty(token.SigningKeyName)
                 || string.IsNullOrEmpty(token.SharedResource)
                 || string.IsNullOrEmpty(token.Signature)
                 || token.Expiry <= 0);
@@ -173,8 +173,9 @@ namespace Nice2Experience.SasPolicy
             {
                 SharedResource = sharedResourceName,
                 Expiry = expiry,
-                SigningKey = signingKeyName,
-                AdditionalValues = additionalValues
+                SigningKeyName = signingKeyName,
+                AdditionalValues = additionalValues,
+                Nonce = ""
             };
             if (useNonce)
             {

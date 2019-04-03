@@ -1,6 +1,6 @@
 using System;
 
-namespace Nice2Experience.SasPolicy
+namespace Nice2Experience.Security.Sas
 {
     /// <summary>
     ///     Enum for defining permissions

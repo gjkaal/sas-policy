@@ -1,7 +1,7 @@
 using Xunit;
 using Xunit.Abstractions;
 
-using Nice2Experience.SasPolicy;
+using Nice2Experience.Security.Sas;
 
 namespace SasPolicy.Tests
 {
@@ -32,6 +32,27 @@ namespace SasPolicy.Tests
             Assert.NotNull(token);
             var queryString = token.ToQueryString();
             _outputHelper.WriteLine(queryString);
+        }
+    }
+
+    public class SasTokenValidatorShould
+    {
+        internal readonly ITestOutputHelper _outputHelper;
+        public SasTokenValidatorShould(ITestOutputHelper outputHelper)
+        {
+            _outputHelper = outputHelper;
+        }
+
+        [Fact]
+        public void AcceptPolicyToValidateQuerystring()
+        {
+            var policy = SASPolicyFactory.CreatePolicy("a", "This is a valid secret", 60);
+            var token = SasTokenFactory.Create("CalculateThis", policy);
+            var queryString = token.ToQueryString();
+
+            var validator = new SasTokenValidator(policy);
+            var validationResult = validator.Validate(queryString);
+            Assert.True(validationResult.Success);
         }
     }
 

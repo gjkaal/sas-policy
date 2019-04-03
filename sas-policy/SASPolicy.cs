@@ -1,5 +1,6 @@
+using System.Collections.Generic;
 
-namespace Nice2Experience.SasPolicy
+namespace Nice2Experience.Security.Sas
 {
     /// <summary>
     /// Class SASPolicy.
@@ -66,10 +67,8 @@ namespace Nice2Experience.SasPolicy
         /// <value>The token time out.</value>
         public int TokenTimeOut { get; set; }
 
-        /// <summary>
-        /// Gets or sets the ShardingKey.
-        /// </summary>
-        /// <value>The tenant.</value>
-        public int ShardingKey { get; set; }
+        /// If any additional keys are required, add them to this list
+        public ICollection<string> AdditionalKeys { get; set; }
+
     }
 }

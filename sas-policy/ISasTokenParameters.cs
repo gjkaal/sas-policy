@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Nice2Experience.SasPolicy
+namespace Nice2Experience.Security.Sas
 {
     public interface ISasTokenParameters
     {
@@ -8,7 +8,7 @@ namespace Nice2Experience.SasPolicy
         string Nonce { get; set; }
         string SharedResource { get; set; }
         string Signature { get; set; }
-        string SigningKey { get; set; }
+        string SigningKeyName { get; set; }
         IDictionary<string, string> AdditionalValues { get; set; }
     }
 }

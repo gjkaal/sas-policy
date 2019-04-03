@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Nice2Experience.SasPolicy
+namespace Nice2Experience.Security.Sas
 {
     /// <summary>
     ///     represents a SAS-token. (Shared Access Signature)
@@ -10,7 +10,7 @@ namespace Nice2Experience.SasPolicy
         /// <summary>
         ///     skn
         /// </summary>
-        public string SigningKey { get; set; }
+        public string SigningKeyName { get; set; }
 
         /// <summary>
         ///     sr
@@ -26,7 +26,6 @@ namespace Nice2Experience.SasPolicy
         ///     se
         /// </summary>
         public int Expiry { get; set; }
-
 
         public string Nonce { get; set; }
 

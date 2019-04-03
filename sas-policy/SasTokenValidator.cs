@@ -2,38 +2,43 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 
-namespace Nice2Experience.SasPolicy
+namespace Nice2Experience.Security.Sas
 {
-
     public class SasTokenValidator : ISasTokenValidator
     {
         public const int NonceTimeOutInMinutes = 10;
         public const int DefaultTokenTimeoutInSeconds = 60;
         private readonly IMemoryCache _memoryCache;
-        private readonly string _sharedSecret;
-        private readonly HashType _hashType;
-        private const string DefaultSecret = "thisisthesecretkey";
+        private readonly Dictionary<string, ISasPolicy> policies;
+        private const string DefaultSecret = "nice2experience-secret";
 
         public SasTokenValidator()
         {
-            _hashType = HashType.Sha256;
-            _sharedSecret = DefaultSecret;
+            policies = new Dictionary<string, ISasPolicy>();
+            // add default policy
+            var policy = SASPolicyFactory.CreatePolicy("sk", DefaultSecret, 60);
+            policies.Add("testKey", policy);
         }
 
-        public SasTokenValidator(IMemoryCache memoryCache) : this(HashType.Sha256, DefaultSecret)
+        public SasTokenValidator(ISasPolicy policy) : this()
+        {
+            policies.Add(policy.Skn, policy);
+        }
+
+        public SasTokenValidator(IMemoryCache memoryCache) : this()
         {
             _memoryCache = memoryCache;
         }
 
-        public SasTokenValidator(HashType hashType, string sharedSecret, IMemoryCache memoryCache) : this(hashType, sharedSecret)
+        public SasTokenValidator(IMemoryCache memoryCache, HashType hashType, string keyName, string sharedSecret) : this(hashType, keyName, sharedSecret)
         {
             _memoryCache = memoryCache;
         }
 
-        public SasTokenValidator(HashType hashType, string sharedSecret)
+        public SasTokenValidator(HashType hashType, string keyName, string sharedSecret) : this()
         {
-            _sharedSecret = sharedSecret;
-            _hashType = hashType;
+            var policy = SASPolicyFactory.CreatePolicy(keyName, sharedSecret, 60);
+            policies.Add("testKey", policy);
         }
 
         /// <summary>
@@ -120,76 +125,43 @@ namespace Nice2Experience.SasPolicy
             return _memoryCache.TryGetValue(nonce, out _);
         }
 
-        public void ValidateAndThrowException(string queryString, string sharedSecret, HashType hashType)
+        public void ValidateAndThrowException(string queryString)
         {
             var token = SasTokenFactory.Parse(queryString);
-            var r = Validate(token, sharedSecret, hashType);
+            var r = Validate(token);
             // TODO : Get description from metadata
             if (!r.Success) throw new ArgumentOutOfRangeException(r.TokenResponseCode.ToString());
         }
 
         #region overloads
-        public ISasTokenValidationResult Validate(ISasTokenParameters token)
-        {
-            return ExecuteValidation(token, _sharedSecret, !string.IsNullOrEmpty(token.Nonce), _hashType, token.AdditionalValues?.Keys ?? null, false);
-        }
-
-        public ISasTokenValidationResult Validate(ISasTokenParameters token, string sharedSecret, bool useNonce, HashType hashType)
-        {
-            return ExecuteValidation(token, sharedSecret, useNonce, hashType, token.AdditionalValues?.Keys ?? null, false);
-        }
-
-        public ISasTokenValidationResult Validate(ISasTokenParameters token, string sharedSecret, bool useNonce, HashType hashType, IEnumerable<string> additionalKeys)
-        {
-            return ExecuteValidation(token, sharedSecret, useNonce, hashType, additionalKeys, false);
-        }
-
-        public ISasTokenValidationResult Validate(ISasTokenParameters token, string sharedSecret, HashType hashType)
-        {
-            return ExecuteValidation(token, sharedSecret, false, hashType, token.AdditionalValues?.Keys ?? null, false);
-        }
 
         public ISasTokenValidationResult Validate(string queryString)
         {
             var token = SasTokenFactory.Parse(queryString);
-            return ExecuteValidation(token, _sharedSecret, false, _hashType, null, false);
-        }
-
-        public ISasTokenValidationResult Validate(string queryString, IEnumerable<string> additionalKeys)
-        {
-            var token = SasTokenFactory.Parse(queryString);
-            return ExecuteValidation(token, _sharedSecret, false, _hashType, additionalKeys, false);
+            return Validate(token);
         }
 
         public ISasTokenValidationResult Validate(string queryString, bool ignoreTimeOut)
         {
             var token = SasTokenFactory.Parse(queryString);
-            return ExecuteValidation(token, _sharedSecret, false, _hashType, null, ignoreTimeOut);
+            return Validate(token, ignoreTimeOut);
         }
 
-        public ISasTokenValidationResult Validate(string queryString, string sharedSecret)
+        public ISasTokenValidationResult Validate(ISasTokenParameters token)
         {
-            var token = SasTokenFactory.Parse(queryString);
-            return ExecuteValidation(token, sharedSecret, false, _hashType, null, false);
+            return Validate(token, false);
         }
 
-        public ISasTokenValidationResult Validate(string queryString, string sharedSecret, HashType hashType)
+        public ISasTokenValidationResult Validate(ISasTokenParameters token, bool ignoreTimeOut)
         {
-            var token = SasTokenFactory.Parse(queryString);
-            return ExecuteValidation(token, sharedSecret, false, hashType, null, false);
+            if (!policies.ContainsKey(token.SigningKeyName))
+            {
+                return new SasTokenValidationResult(false, token.SharedResource, TokenResponseCode.PolicyFailed);
+            }
+            var p = policies[token.SigningKeyName];
+            return ExecuteValidation(token, p.Key, p.UseNonce, p.HashType, p.AdditionalKeys, ignoreTimeOut);
         }
 
-        public ISasTokenValidationResult Validate(string queryString, string sharedSecret, IEnumerable<string> additionalKeys)
-        {
-            var token = SasTokenFactory.Parse(queryString);
-            return ExecuteValidation(token, sharedSecret, false, _hashType, additionalKeys, true);
-        }
-
-        public ISasTokenValidationResult Validate(string queryString, string sharedSecret, HashType hashType, IEnumerable<string> additionalKeys)
-        {
-            var token = SasTokenFactory.Parse(queryString);
-            return ExecuteValidation(token, sharedSecret, false, hashType, additionalKeys, true);
-        }
         #endregion
     }
 }
