@@ -4,7 +4,6 @@
         <TargetFrameworks>netcoreapp2.2;net471;net472</TargetFrameworks>
     </PropertyGroup>
     <PropertyGroup>
-        <PackageLicenseFile>LICENSE.MD</PackageLicenseFile>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Description>Shared Access Signature utility</Description>
         <Copyright>(c) 2019 - nice2experience.com all right reserverd</Copyright>
@@ -17,15 +16,21 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <VersionPrefix>1.0.1</VersionPrefix>
-        <VersionSuffix>alpha</VersionSuffix>
+        <VersionPrefix>1.0.2</VersionPrefix>
+        <VersionSuffix></VersionSuffix>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <PackageLicenseUrl></PackageLicenseUrl>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="2.2.0" />
     </ItemGroup>
+
     <ItemGroup>
-        <None Include="LICENSE.md" Pack="true" PackagePath="$(PackageLicenseFile)" />
+        <None Include="License.md" PackagePath="" Pack="true" Visible="false" >
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 </Project>
