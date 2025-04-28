@@ -5,24 +5,41 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Nice2Experience.Security.Sas
+namespace N2.Security.Sas
 {
     public static class SASTokenExtensions
     {
-
-        private const string SharedKeyTooShortMessage = "Shared secret does not comply to policies (too short). Check if the KeyName and Shared Secret are not switched";
 
         /// <summary>
         ///     returns a string representation of this token for use in a URL
         /// </summary>
         public static string ToQueryString(this ISasTokenParameters token)
         {
-            var components = new List<string>();
-            if (!string.IsNullOrEmpty(token.SharedResource)) components.Add($"sr={WebUtility.UrlEncode(token.SharedResource)}");
-            if (!string.IsNullOrEmpty(token.Signature)) components.Add($"sig={WebUtility.UrlEncode(token.Signature)}");
-            if (token.Expiry > 0) components.Add($"se={token.Expiry}");
-            if (!string.IsNullOrEmpty(token.Nonce)) components.Add($"nonce={WebUtility.UrlEncode(token.Nonce)}");
-            if (!string.IsNullOrEmpty(token.SigningKeyName)) components.Add($"skn={WebUtility.UrlEncode(token.SigningKeyName)}");
+            var components = new List<string>
+            {
+                $"sr={WebUtility.UrlEncode(string.Join(',', token.SharedResource))}"
+            };
+
+            if (!string.IsNullOrEmpty(token.Signature))
+            {
+                components.Add($"sig={WebUtility.UrlEncode(token.Signature)}");
+            }
+
+            if (token.Expiry > 0)
+            {
+                components.Add($"se={token.Expiry}");
+            }
+
+            if (!string.IsNullOrEmpty(token.Nonce))
+            {
+                components.Add($"nonce={WebUtility.UrlEncode(token.Nonce)}");
+            }
+
+            if (!string.IsNullOrEmpty(token.SigningKeyName))
+            {
+                components.Add($"skn={WebUtility.UrlEncode(token.SigningKeyName)}");
+            }
+
             if (token.AdditionalValues != null)
             {
                 foreach (var kvp in token.AdditionalValues)
@@ -38,10 +55,9 @@ namespace Nice2Experience.Security.Sas
             return CalcSignature(token, sharedSecret, false, hashType, null);
         }
 
-        public static ISasTokenValidationResult ValidateSigningKeyPolicies(string sharedSecret)
+        public static bool ValidateSigningKeyPolicies(string sharedSecret)
         {
-            if (sharedSecret.Length < 20) return new SasTokenValidationResult(false, SharedKeyTooShortMessage);
-            return new SasTokenValidationResult(true, string.Empty);
+            return sharedSecret.Length >= 20;
         }
 
         /// <summary>
@@ -60,20 +76,31 @@ namespace Nice2Experience.Security.Sas
             // to be safe, the sharedsecret should contain at least 20 characters.
             // this also limits the number of erroneous switch of the key name and shared secret
             var keyPolicyCheck = ValidateSigningKeyPolicies(sharedSecret);
-            if (!keyPolicyCheck.Success) throw new ArgumentOutOfRangeException(nameof(sharedSecret), keyPolicyCheck.TokenResponseCode.ToString());
+            if (!keyPolicyCheck)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sharedSecret), TokenResponseCode.InvalidSigningKey.Description());
+            }
 
-            var stringToSign = WebUtility.UrlEncode(token.SharedResource) + "\n";
+            var stringToSign = WebUtility.UrlEncode(string.Join(',', token.SharedResource)) + "\n";
 
             if (additionalKeys != null)
             {
                 foreach (var key in additionalKeys)
                 {
                     var kvp = token.AdditionalValues.FirstOrDefault(q => q.Key == key);
-                    if (kvp.Key == null) throw new ArgumentException($"Value is missing : {key}");
+                    if (kvp.Key == null)
+                    {
+                        throw new ArgumentException($"Value is missing : {key}");
+                    }
+
                     stringToSign += $"{kvp.Key}={WebUtility.UrlEncode(kvp.Value)}\n";
                 }
             }
-            if (useNonce) stringToSign += $"{WebUtility.UrlEncode(token.Nonce)}\n";
+            if (useNonce)
+            {
+                stringToSign += $"{WebUtility.UrlEncode(token.Nonce)}\n";
+            }
+
             stringToSign += token.Expiry;
             return CalculateHash(sharedSecret, hashType, stringToSign);
         }
@@ -84,14 +111,15 @@ namespace Nice2Experience.Security.Sas
             switch (hashType)
             {
                 default:
-                    throw new NotSupportedException($"Hashing using {hashType.ToString()} is not supported");
+                    throw new NotSupportedException($"Hashing using {hashType} is not supported");
                 case HashType.MD5:
-                    using (var hmac = MD5.Create())
+                    using (var md5 = MD5.Create())
                     {
-                        var bytes = hmac.ComputeHash(Encoding.ASCII.GetBytes(stringToSign + '\n' + sharedSecret));
-                        signature = BitConverter.ToString(bytes).Replace("-", string.Empty).ToLowerInvariant();
+                        var bytes = md5.ComputeHash(Encoding.UTF8.GetBytes(stringToSign + '\n' + sharedSecret));
+                        signature = BitConverter.ToString(bytes)
+                            .Replace("-", string.Empty)
+                            .ToLowerInvariant();
                     }
-
                     break;
                 case HashType.Sha1:
                     using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(sharedSecret)))
@@ -119,8 +147,11 @@ namespace Nice2Experience.Security.Sas
             object result;
             var type = typeof(T);
             var item = default(T);
-            if (!items.ContainsKey(key)) return default(T);
-            var value = items[key];
+            if (!items.TryGetValue(key, out var value))
+            {
+                return default;
+            }
+
             if (item is Guid)
             {
                 result = Guid.Parse(value);
@@ -136,7 +167,10 @@ namespace Nice2Experience.Security.Sas
         {
             var result = new Dictionary<string, string>();
 
-            if (string.IsNullOrEmpty(queryString)) return result;
+            if (string.IsNullOrEmpty(queryString))
+            {
+                return result;
+            }
 
             var items = queryString.Split(separator);
             foreach (var item in items)

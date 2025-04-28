@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Nice2Experience.Security.Sas
+namespace N2.Security.Sas
 {
     /// <summary>
     /// Class SASPolicy.
@@ -16,17 +16,16 @@ namespace Nice2Experience.Security.Sas
         public const int DefaultKeyLength = 64;
 
         /// <summary>
-        ///     Gets or sets the permissions allowed for this policy.
+        /// The permissions requested with this token
         /// </summary>
-        /// <value>The permissions.</value>
-        public Permissions Permissions { get; set; }
+        public string[] ResourceRequest { get; set; }
 
         /// <summary>
         ///     Gets or sets the resource identifier.
         /// </summary>
         /// <value>The identifier.</value>
         /// <remarks>no comments</remarks>
-        public string SharedResourceExpression { get; set; }
+        public string SharedResourceExpression { get; set; } = ".*";
 
         /// <summary>
         ///     Gets or sets the name of the policy.

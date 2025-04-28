@@ -1,53 +1,71 @@
 using System;
 using System.Text.RegularExpressions;
 
-namespace Nice2Experience.Security.Sas
+namespace N2.Security.Sas
 {
     public static class SASPolicyFactory
     {
-        /// <summary>
-        ///     Validates permissions of the specified keyName for the specified resource
-        /// </summary>
-        /// <param name="resource">The resource</param>
-        /// <param name="permissions">The permissions.</param>
-        /// <returns>True, if resource can be accessed otherwise false</returns>
-        /// <exception cref="System.NotImplementedException"></exception>
-        public static ISasTokenValidationResult CheckPolicy(this ISasPolicy sasPolicy, string resource, Permissions permissions)
-        {
-            // match resource
-            if (!Regex.IsMatch(resource, sasPolicy.SharedResourceExpression))
-                return new SasTokenValidationResult
-                {
-                    Success = false,
-                    TokenResponseCode = TokenResponseCode.SharedResourceExpressionFailed
-                };
 
-            // chck permissions, if provided
-            if (sasPolicy.Permissions != Permissions.None)
-                if ((permissions & sasPolicy.Permissions) != permissions)
-                    return new SasTokenValidationResult
-                    {
-                        Success = false,
-                        TokenResponseCode = TokenResponseCode.PolicyFailed
-                    };
-            return new SasTokenValidationResult(resource);
-        }
-
-        public static ISasPolicy CreatePolicy(string skn, string sharedSecret, int timeoutInSeconds)
+        public static ISasPolicy CreatePolicy(string skn, string sharedSecret, int timeoutInSeconds, HashType hashType = HashType.Sha256)
         {
-            if (timeoutInSeconds < 10) throw new ArgumentOutOfRangeException(nameof(timeoutInSeconds), "A timeout should be at least 10 s");
+            if (timeoutInSeconds < 10)
+            {
+                throw new ArgumentOutOfRangeException(nameof(timeoutInSeconds), "A timeout should be at least 10 s");
+            }
+
             return new SASPolicy
             {
                 Skn = skn,
                 Key = sharedSecret,
                 SharedResourceExpression = ".*",
-                Permissions = Permissions.None,
-                HashType = HashType.Sha256,
+                ResourceRequest = [],
+                HashType = hashType,
                 UseNonce = false,
                 TokenTimeOut = timeoutInSeconds,
                 TypeName = "SimplePolicy"
             };
         }
+
+        public static ISasPolicy WithResource(this ISasPolicy policy, string[] resource)
+        {
+            if (policy == null)
+            {
+                throw new ArgumentNullException(nameof(policy));
+            }
+            if (resource == null || resource.Length == 0)
+            {
+                return policy;
+            }
+            if (policy.ResourceRequest == null)
+            {
+                policy.ResourceRequest = resource;
+            }
+            else
+            {
+                var newResource = new string[policy.ResourceRequest.Length + resource.Length];
+                Array.Copy(policy.ResourceRequest, newResource, policy.ResourceRequest.Length);
+                Array.Copy(resource, 0, newResource, policy.ResourceRequest.Length, resource.Length);
+                policy.ResourceRequest = newResource;
+            }
+            return policy;
+        }
+
+        public static ISasPolicy WithMatch(this ISasPolicy policy, string match)
+        {
+            if (policy == null)
+            {
+                throw new ArgumentNullException(nameof(policy));
+            }
+            if (string.IsNullOrEmpty(match))
+            {
+                return policy;
+            }
+            // check if the match is a valid regex
+            var regex = new Regex(match, RegexOptions.Compiled);
+            policy.SharedResourceExpression = match;
+            return policy;
+        }
+
     }
 
 }

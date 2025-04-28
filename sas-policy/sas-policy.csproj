@@ -1,23 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFrameworks>netcoreapp2.2;net471;net472</TargetFrameworks>
-        <PackageLicenseFile>Licence.md</PackageLicenseFile>
+        <TargetFrameworks>netstandard2.1;net8.0;net9.0</TargetFrameworks>
+        <LangVersion>12</LangVersion>
+        <NoWarn>IDE0290;CA1850;CA1872</NoWarn>
     </PropertyGroup>
     <PropertyGroup>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Description>Shared Access Signature utility</Description>
-        <Copyright>(c) 2019 - nice2experience.com - all rights reserved</Copyright>
+        <Copyright>(c) 2019 - Kaalenco - all rights reserved</Copyright>
         <PackageTags>authentication sas shared token</PackageTags>
         <NeutralLanguage>en</NeutralLanguage>
         <Authors>GJH Kaal</Authors>
-        <Company>nice2experience</Company>
-        <PackageReleaseNotes>initial</PackageReleaseNotes>
+        <Company>Kaalenco</Company>
+        <PackageReleaseNotes>Update to net9.0 framework</PackageReleaseNotes>
         <RepositoryUrl>https://github.com/gjkaal/sas-policy</RepositoryUrl>
+      <RootNamespace>N2.Security.Sas</RootNamespace>
     </PropertyGroup>
 
     <PropertyGroup>
-        <VersionPrefix>1.0.2</VersionPrefix>
+        <VersionPrefix>1.0.3</VersionPrefix>
         <VersionSuffix></VersionSuffix>
         <IncludeSymbols>false</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -25,13 +27,20 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="2.2.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.4" />
     </ItemGroup>
 
-    <ItemGroup>
-        <None Include="License.md" PackagePath="" Pack="true" >
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
+  <PropertyGroup>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+        <None Include="License.md" Pack="true" PackagePath="\" />
+        <None Include="readme.md" Pack="true" PackagePath="\" />
     </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\sas-policy.abstractions\sas-policy.abstractions.csproj" />
+  </ItemGroup>
 </Project>

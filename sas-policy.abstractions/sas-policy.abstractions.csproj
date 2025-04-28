@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1</TargetFrameworks>
+    <LangVersion>12</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>Shared Access Signature abstractions</Description>
+    <Copyright>(c) 2019 - Kaalenco - all rights reserved</Copyright>
+    <PackageTags>authentication sas shared token</PackageTags>
+    <NeutralLanguage>en</NeutralLanguage>
+    <Authors>GJH Kaal</Authors>
+    <Company>Kaalenco</Company>
+    <PackageReleaseNotes>netstandard2.1</PackageReleaseNotes>
+    <RepositoryUrl>https://github.com/gjkaal/sas-policy</RepositoryUrl>
+    <RootNamespace>N2.Security.Sas</RootNamespace>
+  </PropertyGroup>
+  
+</Project>

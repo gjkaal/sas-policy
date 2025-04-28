@@ -1,4 +1,4 @@
-namespace Nice2Experience.Security.Sas
+namespace N2.Security.Sas
 {
     public class SasTokenValidationResult : ISasTokenValidationResult
     {
@@ -6,30 +6,31 @@ namespace Nice2Experience.Security.Sas
         {
         }
 
-        public SasTokenValidationResult(string resource)
+        public static SasTokenValidationResult Accepted(string[] resourceRequest)
         {
-            Resource = resource;
-            Success = true;
-            TokenResponseCode = TokenResponseCode.TokenAccepted;
+            return new SasTokenValidationResult(true, resourceRequest, TokenResponseCode.TokenAccepted);
         }
 
-        public SasTokenValidationResult(bool success, string resource)
+        public static SasTokenValidationResult NotAccepted(string[] resourceRequest)
         {
-            Success = success;
-            Resource = resource;
-            TokenResponseCode = success ? TokenResponseCode.TokenAccepted : TokenResponseCode.NotAccepted;
+            return new SasTokenValidationResult(false, resourceRequest, TokenResponseCode.NotAccepted);
         }
 
-        public SasTokenValidationResult(bool success, string resource, TokenResponseCode code)
+        public static SasTokenValidationResult Failed(string[] resourceRequest, TokenResponseCode responseCode)
+        {
+            return new SasTokenValidationResult(false, resourceRequest, responseCode);
+        }
+
+        public SasTokenValidationResult(bool success, string[] resourceRequest, TokenResponseCode code)
         {
             Success = success;
-            Resource = resource;
+            Resource = string.Join(',', resourceRequest);
             TokenResponseCode = code;
         }
 
-        public bool Success { get; set; }
-        public TokenResponseCode TokenResponseCode { get; set; }
-        public string Resource { get; set; }
+        public bool Success { get; private set; }
+        public TokenResponseCode TokenResponseCode { get; private set; }
+        public string Resource { get; private set; }
 
         /// <summary>
         /// Performs an implicit conversion from <see cref="SasTokenValidationResult" /> to <see cref="System.Boolean" />.
@@ -39,7 +40,11 @@ namespace Nice2Experience.Security.Sas
         /// <remarks>no comments</remarks>
         public static implicit operator bool(SasTokenValidationResult r)
         {
-            if (r == null) return false;
+            if (r == null)
+            {
+                return false;
+            }
+
             return r.Success;
         }
 
