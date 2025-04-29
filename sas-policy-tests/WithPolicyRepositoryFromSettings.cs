@@ -18,7 +18,7 @@ public class WithPolicyRepositoryFromSettings
     public WithPolicyRepositoryFromSettings()
     {
         var builder = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>()
+            .AddInMemoryCollection(new Dictionary<string, string>()
             {
                 ["SasPolicy:Policies:0:Skn"] = "SomeKey",
                 ["SasPolicy:Policies:0:Key"] = "signingKey",

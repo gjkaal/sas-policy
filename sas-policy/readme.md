@@ -52,10 +52,21 @@ class Program {
         // Add the token as a Bearer token in the Authorization header
         request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.Signature);
 
-        // Send the request
+        
+        // Step 3: Construct the token as a Base64-encoded string
+        var tokenString = $"skn={token.SigningKeyName}"
+            + "&sr={string.Join(",", token.SharedResource)}"
+            + "&se={token.Expiry}"
+            + "&sig={token.Signature}"
+            + "&nonce={token.Nonce}";
+        var base64EncodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes(tokenString));
+
+        // Step 4: Use the Base64-encoded token in an HTTP request
+        using var httpClient = new HttpClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, sharedResourceName);
         var response = await httpClient.SendAsync(request);
 
-        // Step 4: Do something with the response
+        // Step 5: Do something with the response
         Console.WriteLine($"Response Status Code: {response.StatusCode}");
         var responseBody = await response.Content.ReadAsStringAsync();
         Console.WriteLine($"Response Body: {responseBody}");

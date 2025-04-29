@@ -35,7 +35,8 @@ public class SasTokenMiddleware
         var requestUri = new Uri(requestPath, UriKind.Absolute);
 
         // Get the properties from the request headers
-        var token = SasTokenFactory.FromHeaders(context.Request.Headers);
+        var bearer = context.Request.Headers["Authorization"];
+        var token = SasTokenFactory.Parse(bearer);
 
         // Validate the token
         var validationResult = await _sasTokenValidator.Validate(requestUri, token);
@@ -59,11 +60,9 @@ public class SasTokenMiddleware
         }
 
         // Create claims based on the token
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.Name, token.SigningKeyName),
-            new(ClaimTypes.Expiration, token.Expiry.ToString())
-        };
+        var claims = new List<Claim>();
+        claims.Add(new Claim(ClaimTypes.Name, token.SigningKeyName));
+        claims.Add(new Claim(ClaimTypes.Expiration, token.Expiry.ToString()));
 
         foreach (var resource in token.SharedResource)
         {

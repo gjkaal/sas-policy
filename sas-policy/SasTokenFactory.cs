@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
 
 
 namespace N2.Security.Sas
@@ -23,36 +23,26 @@ namespace N2.Security.Sas
 
         private static readonly string[] sourceArray = ["skn", "sr", "se", "sig", "nonce"];
 
-        public static SasTokenParameters FromHeaders(IHeaderDictionary headers)
+        public static SasTokenParameters Parse(StringValues authorization)
         {
-            var additionalList = new Dictionary<string, string>();
-            foreach (var kvp in
-                headers.Where(x =>
-                    x.Key.StartsWith("sas-", StringComparison.InvariantCultureIgnoreCase)
-                    && !sourceArray.Contains(x.Key)))
+            var encodedData = string.Empty;
+            if (authorization.Count > 1)
             {
-                additionalList.Add(kvp.Key, kvp.Value);
+                // use second value, first is the type (bearer)
+                encodedData = authorization[1];
             }
-
-            var sr = headers["sr"];
-            var srList = sr.ToArray();
-            var token = new SasTokenParameters
+            else
             {
-                SigningKeyName = headers["skn"],
-                SharedResource = srList,
-                Expiry = GetInt(headers["se"]),
-                Signature = headers["sig"],
-                Nonce = headers["nonce"],
-                AdditionalValues = additionalList
-            };
-            token.Invalid = string.IsNullOrEmpty(token.SigningKeyName)
-                || token.SharedResource.Length == 0
-                || string.IsNullOrEmpty(token.Signature)
-                || token.Expiry <= 0;
-            return token;
+                encodedData = authorization[0];
+            }
+            // Decode from base64
+            var decodedBytes = Convert.FromBase64String(encodedData);
+            var decodedString = System.Text.Encoding.UTF8.GetString(decodedBytes);
+
+            return Parse(decodedString);
         }
 
-        public static SasTokenParameters Parse(IList<KeyValuePair<string, string>> args)
+        private static SasTokenParameters Parse(IList<KeyValuePair<string, string>> args)
         {
             var additionalList = new Dictionary<string, string>();
             foreach (var kvp in args.Where(x => !sourceArray.Contains(x.Key)))
@@ -60,8 +50,12 @@ namespace N2.Security.Sas
                 additionalList.Add(kvp.Key, kvp.Value);
             }
 
-            var sr = args.First(q => q.Key == "sr").Value;
-            var srList = sr.Split([','], StringSplitOptions.RemoveEmptyEntries);
+            var srList = Array.Empty<string>();
+            var sr = args.FirstOrDefault(q => q.Key == "sr");
+            if (sr.Value is not null)
+            {
+                srList = sr.Value.Split([','], StringSplitOptions.RemoveEmptyEntries);
+            }
 
             var token = new SasTokenParameters
             {
