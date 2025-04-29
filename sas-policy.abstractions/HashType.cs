@@ -21,8 +21,17 @@ namespace N2.Security.Sas
         Sha1 = 32772,
 
         /// <summary>
-        ///     The sha256
+        /// The sha-2 hashes
         /// </summary>
-        Sha256 = 32780
+        Sha256 = 32780,
+        Sha384 = 32781,
+        Sha512 = 32782,
+
+        /// <summary>
+        /// The sha-3 hashes
+        /// </summary>
+        SHA3_256 = 32783,
+        SHA3_384 = 32785,
+        SHA3_512 = 32786,
     }
 }

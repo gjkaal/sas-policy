@@ -5,15 +5,15 @@ namespace N2.Security.Sas
     /// <summary>
     /// Class SASPolicy.
     /// </summary>
-    /// <remarks>no comments</remarks>
+    /// <remarks>
+    /// no comments
+    /// </remarks>
     public class SASPolicy : ISasPolicy
     {
         /// <summary>
-        ///     Gets the default length of the key.
+        /// Gets the default token time-out.
         /// </summary>
-        /// <value>The default length of the key.</value>
-        /// <remarks>no comments</remarks>
-        public const int DefaultKeyLength = 64;
+        public const int DefaultTokenTimeOut = 300;
 
         /// <summary>
         /// The permissions requested with this token
@@ -21,53 +21,79 @@ namespace N2.Security.Sas
         public string[] ResourceRequest { get; set; }
 
         /// <summary>
-        ///     Gets or sets the resource identifier.
+        /// Gets or sets the resource identifier.
         /// </summary>
-        /// <value>The identifier.</value>
-        /// <remarks>no comments</remarks>
+        /// <value>
+        /// The identifier.
+        /// </value>
+        /// <remarks>
+        /// no comments
+        /// </remarks>
         public string SharedResourceExpression { get; set; } = ".*";
 
         /// <summary>
-        ///     Gets or sets the name of the policy.
+        /// Gets or sets the name of the policy.
         /// </summary>
-        /// <value>The name of the policy.</value>
-        /// <remarks>no comments</remarks>
-        public string Skn { get; set; }
+        /// <value>
+        /// The name of the policy.
+        /// </value>
+        /// <remarks>
+        /// no comments
+        /// </remarks>
+        public string Skn { get; set; } = string.Empty;
 
         /// <summary>
-        ///     Gets or sets the shared key used to generate a SAS token.
+        /// Gets or sets the shared key used to generate a SAS token.
         /// </summary>
-        /// <value>The key.</value>
-        /// <remarks>no comments</remarks>
-        public string Key { get; set; }
+        /// <value>
+        /// The key.
+        /// </value>
+        /// <remarks>
+        /// no comments
+        /// </remarks>
+        public string Key { get; set; } = string.Empty;
 
         /// <summary>
-        ///     Gets or sets the type name of the protect object.
+        /// Gets or sets the type name of the protect object.
         /// </summary>
-        /// <value>The name of the type.</value>
-        /// <remarks>no comments</remarks>
-        public string TypeName { get; set; }
+        /// <value>
+        /// The name of the type.
+        /// </value>
+        /// <remarks>
+        /// no comments
+        /// </remarks>
+        public string TypeName { get; set; } = nameof(SASPolicy);
 
         /// <summary>
-        ///     Gets or sets a value indicating whether to use a nonce when validating.
+        /// Gets or sets a value indicating whether to use a nonce when validating.
         /// </summary>
-        /// <value><c>true</c> if [use nonce]; otherwise, <c>false</c>.</value>
+        /// <value>
+        /// <c>true</c> if [use nonce]; otherwise, <c>false</c>.
+        /// </value>
         public bool UseNonce { get; set; }
 
         /// <summary>
-        ///     Gets or sets the type of the hash.
+        /// Gets or sets the type of the hash.
         /// </summary>
-        /// <value>The type of the hash.</value>
+        /// <value>
+        /// The type of the hash.
+        /// </value>
         public HashType HashType { get; set; }
 
         /// <summary>
-        ///     Gets or sets the token time out.
+        /// Gets or sets the token time out in seconds.
         /// </summary>
-        /// <value>The token time out.</value>
-        public int TokenTimeOut { get; set; }
+        /// <value>
+        /// A positive integer value.
+        /// </value>
+        public int TokenTimeOut { get; set; } = DefaultTokenTimeOut;
 
         /// If any additional keys are required, add them to this list
-        public ICollection<string> AdditionalKeys { get; set; }
+        public ICollection<string> AdditionalKeys { get; set; } = [];
 
+        /// <summary>
+        /// Indicates if the policy has claims.
+        /// </summary>
+        public bool HasClaims { get; set; }
     }
 }

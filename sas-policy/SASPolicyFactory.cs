@@ -66,6 +66,19 @@ namespace N2.Security.Sas
             return policy;
         }
 
+        public static ISasPolicy WithHash(this ISasPolicy policy, HashType hashType)
+        {
+            if (policy == null)
+            {
+                throw new ArgumentNullException(nameof(policy));
+            }
+            if (hashType == HashType.None)
+            {
+                throw new ArgumentOutOfRangeException(nameof(hashType), "HashType cannot be None");
+            }
+            // check if the match is a valid regex
+            policy.HashType = hashType;
+            return policy;
+        }
     }
-
 }

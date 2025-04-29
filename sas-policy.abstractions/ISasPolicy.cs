@@ -58,5 +58,10 @@ namespace N2.Security.Sas
 
         /// If any additional keys are required, add them to this list
         ICollection<string> AdditionalKeys { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether this instance has claims.
+        /// </summary>
+        bool HasClaims { get; set; }
     }
 }

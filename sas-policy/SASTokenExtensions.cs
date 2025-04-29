@@ -126,17 +126,46 @@ namespace N2.Security.Sas
                     {
                         signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
                     }
-
                     break;
                 case HashType.Sha256:
-                    // This should be the default. Use other methods only, of the client system
-                    // cannot create SHA256 hashes
+                    // This should be the default. Before using other methods, verify if the client system supports it.
                     using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(sharedSecret)))
                     {
                         signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
                     }
-
                     break;
+                case HashType.Sha384:
+                    using (var hmac = new HMACSHA384(Encoding.UTF8.GetBytes(sharedSecret)))
+                    {
+                        signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
+                    }
+                    break;
+                case HashType.Sha512:
+                    using (var hmac = new HMACSHA512(Encoding.UTF8.GetBytes(sharedSecret)))
+                    {
+                        signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
+                    }
+                    break;
+#if NET8_0_OR_GREATER
+                case HashType.SHA3_256:
+                    using (var hmac = new HMACSHA3_256(Encoding.UTF8.GetBytes(sharedSecret)))
+                    {
+                        signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
+                    }
+                    break;
+                case HashType.SHA3_384:
+                    using (var hmac = new HMACSHA3_384(Encoding.UTF8.GetBytes(sharedSecret)))
+                    {
+                        signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
+                    }
+                    break;
+                case HashType.SHA3_512:
+                    using (var hmac = new HMACSHA3_512(Encoding.UTF8.GetBytes(sharedSecret)))
+                    {
+                        signature = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(stringToSign)));
+                    }
+                    break;
+#endif
             }
 
             return signature;

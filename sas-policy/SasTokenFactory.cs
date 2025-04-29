@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using Microsoft.AspNetCore.Http;
+
 
 namespace N2.Security.Sas
 {
@@ -13,7 +15,42 @@ namespace N2.Security.Sas
         public const int DefaultTokenTimeOutInSeconds = 120;
 
         private static readonly Random Random = new();
+
+        // skn = signing key name
+        // sr = shared resource (requested access)
+        // se = expiry time (unix time)
+        // sig = signature over the sr, skn, nonce and time
+
         private static readonly string[] sourceArray = ["skn", "sr", "se", "sig", "nonce"];
+
+        public static SasTokenParameters FromHeaders(IHeaderDictionary headers)
+        {
+            var additionalList = new Dictionary<string, string>();
+            foreach (var kvp in
+                headers.Where(x =>
+                    x.Key.StartsWith("sas-", StringComparison.InvariantCultureIgnoreCase)
+                    && !sourceArray.Contains(x.Key)))
+            {
+                additionalList.Add(kvp.Key, kvp.Value);
+            }
+
+            var sr = headers["sr"];
+            var srList = sr.ToArray();
+            var token = new SasTokenParameters
+            {
+                SigningKeyName = headers["skn"],
+                SharedResource = srList,
+                Expiry = GetInt(headers["se"]),
+                Signature = headers["sig"],
+                Nonce = headers["nonce"],
+                AdditionalValues = additionalList
+            };
+            token.Invalid = string.IsNullOrEmpty(token.SigningKeyName)
+                || token.SharedResource.Length == 0
+                || string.IsNullOrEmpty(token.Signature)
+                || token.Expiry <= 0;
+            return token;
+        }
 
         public static SasTokenParameters Parse(IList<KeyValuePair<string, string>> args)
         {
@@ -80,7 +117,7 @@ namespace N2.Security.Sas
         }
 
         ///// <summary>
-        ///// Create signed sastoken using a policy 
+        ///// Create signed sastoken using a policy
         ///// </summary>
         public static SasTokenParameters Create(string[] sharedResourceRequest, IDictionary<string, string> additionalValues, ISasPolicy policy)
         {
@@ -88,7 +125,7 @@ namespace N2.Security.Sas
         }
 
         ///// <summary>
-        ///// Create signed sastoken using a policy 
+        ///// Create signed sastoken using a policy
         ///// </summary>
         public static SasTokenParameters Create(string[] sharedResourceRequest, ISasPolicy policy)
         {

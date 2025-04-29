@@ -63,111 +63,12 @@ class Program {
 }
 ```
 
-### Example authorization filter for an ASP.NET Core API
+### Using middleware to transform the SAS token into a ClaimsPrincipal
 
 The SAS token can be used as an authorization filter in an ASP.NET Core API.
 This is done using middleware that checks the token in the request headers.
 The middleware can be added to the ASP.NET Core pipeline during startup.
 
-This example demonstrates how to create a custom authorization filter 
-that checks for a valid SAS token in the request headers.
-
-``` csharp
-using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using N2.Security.Sas;
-
-public class SasTokenMiddleware
-{
-    private readonly RequestDelegate _next;
-    private readonly ISasTokenValidator _sasTokenValidator;
-    private readonly IClaimsRepository _claimsRepository;
-
-    public SasTokenMiddleware(
-        RequestDelegate next, 
-        ISasTokenValidator sasTokenValidator,
-        IClaimsRepository claimsRepository)
-    {
-        _next = next ?? throw new ArgumentNullException(nameof(next));
-        _sasTokenValidator = sasTokenValidator ?? throw new ArgumentNullException(nameof(sasTokenValidator));
-        _keyRepository = _keyRepository ?? throw new ArgumentNullException(nameof(keyRepository));
-    }
-
-    public async Task InvokeAsync(HttpContext context)
-    {
-        // Extract the token from the Authorization header
-        var authorizationHeader = context.Request.Headers["Authorization"].ToString();
-        if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsync("Authorization header missing or invalid.");
-            return;
-        }
-
-        var tokenString = authorizationHeader.Substring("Bearer ".Length).Trim();
-
-        // Validate the token
-        var token = SasTokenFactory.Parse(tokenString);
-        var validationResult = _sasTokenValidator.Validate(token);
-
-        if (!validationResult.Success)
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            // TODO: Log the validation error
-            // TODO: You should not disclose the reason for failure in production
-            await context.Response.WriteAsync($"Token validation failed: {validationResult.TokenResponseCode}");
-            return;
-        }
-
-        // Check if the signing key is valid, returns null if not found
-        var signingKeyClaims = _claimsRepository.GetClaimsByName(token.SigningKeyName);
-        if (signingKeyClaims == null)
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            // TODO: Log the validation error
-            // TODO: You should not disclose the reason for failure in production
-            await context.Response.WriteAsync("Invalid signing key.");
-            return;
-        }
-
-        // Create claims based on the token
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, token.SigningKeyName),
-            new Claim("SharedResource", token.SharedResource),
-            new Claim("Expiry", token.Expiry.ToString())
-        };
-
-        // Add additional claims based on the `skn` parameter
-        if (signingKeyClaims.Any)
-        {
-            foreach (var claim in signingKeyClaims)
-            {
-                claims.Add(new Claim(claim.Type, claim.Value));
-            }
-        }
-
-        // Create a ClaimsIdentity and set it on the HttpContext
-        var identity = new ClaimsIdentity(claims, "SasToken");
-        context.User = new ClaimsPrincipal(identity);
-
-        // Call the next middleware in the pipeline
-        await _next(context);
-    }
-}
-```
-
-### Explanation:
-
-1.	__Extract Token:__ The middleware extracts the token from the Authorization header.
-2.	__Validate Token:__ The SasTokenValidator is used to validate the token.
-3.  __Get Signing Key Claims:__ Signing key claims are retrieved based on the token's SigningKeyName.
-3.	__Create Claims:__ Claims are created based on the token's properties, such as SigningKeyName, SharedResource, and Expiry.
-4.	__Set ClaimsPrincipal:__ A ClaimsPrincipal is created and assigned to HttpContext.User.
-5.	__Pass to Next Middleware:__ If validation succeeds, the request is passed to the next middleware in the pipeline.
 
 ### Usage :
 
@@ -183,5 +84,68 @@ public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
         endpoints.MapControllers();
     });
+}
+```
+
+## Configuration using a policy provider
+
+You can configure the SAS policy using the `SasPolicyFromSettings` class.
+This class allows you to define the policy in a configuration file (like appsettings.json)
+and load it at runtime. If you want to implement a custom configuration provider,
+you can create a class that implements the `ISasPolicyProvider` interface.
+
+### Using the SasPolicyFromSettings
+
+Add a section `SasPolicy` to the appsettings file and add the required policies. 
+The policies are defined as a list of objects. You can define claims for each policy.
+This is done using the `SasPolicyClaims` section. 
+
+``` json
+
+"SasPolicy" : [
+    {
+        "Skn" : "PolicyName",
+        "Key" : "mySigningKey-ASecretValue",
+        "UseNonce" : true,
+        "HashType" : "SHA256",
+        "TokenTimeOut" : 300,
+        "ResourceRequest" : [ "read", "write" ]
+    },
+    {
+        "Skn" : "SecondPolicy",
+        "Key" : "mySigningKey-BSecretValue",
+    }
+],
+"SasPolicyClaims" : [
+    {
+        "Skn" : "PolicyName",
+        "ClaimType" : "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/country",
+        "ClaimValue" : "nl",
+    }
+]
+
+```
+
+Reading the configuration is done while initializing the `SasPolicyFromSettings` class.
+
+``` csharp
+    public class Startup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        // Add the configuration provider
+        services.AddSingleton<ISasPolicyProvider, SasPolicyFromSettings>();
+        
+        // Add the middleware
+        services.AddTransient<SasTokenMiddleware>();
+        
+        // Other service registrations...
+    }
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        app.UseMiddleware<SasTokenMiddleware>();
+        
+        // Other middleware...
+    }
 }
 ```
