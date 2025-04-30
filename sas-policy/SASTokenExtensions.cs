@@ -5,10 +5,25 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 namespace N2.Security.Sas
 {
     public static class SASTokenExtensions
     {
+        public static IServiceCollection AddSasTokensFromSettings(this IServiceCollection services)
+        {
+            services.TryAddSingleton<ISasPolicyRepository, SasPolicyFromSettings>();
+            services.TryAddSingleton<ISasTokenValidator, SasTokenValidator>();
+            return services;
+        }
+
+        public static IApplicationBuilder UseSasTokens(this IApplicationBuilder builder)
+        {
+            return builder.UseMiddleware<SasTokenMiddleware>();
+        }
 
         /// <summary>
         ///     returns a string representation of this token for use in a URL
@@ -44,7 +59,7 @@ namespace N2.Security.Sas
             {
                 foreach (var kvp in token.AdditionalValues)
                 {
-                    components.Add($"{kvp.Key}={WebUtility.UrlEncode(kvp.Value)}");
+                    components.Add($"{kvp.Key.ToLowerInvariant()}={WebUtility.UrlEncode(kvp.Value)}");
                 }
             }
             return string.Join("&", components);
@@ -71,7 +86,7 @@ namespace N2.Security.Sas
         /// <summary>
         ///     calculate the signature of the sastoken
         /// </summary>
-        public static string CalcSignature(this ISasTokenParameters token, string sharedSecret, bool useNonce, HashType hashType, IEnumerable<string> additionalKeys)
+        public static string CalcSignature(this ISasTokenParameters token, string sharedSecret, bool useNonce, HashType hashType, IEnumerable<string>? additionalKeys)
         {
             // to be safe, the sharedsecret should contain at least 20 characters.
             // this also limits the number of erroneous switch of the key name and shared secret
@@ -83,14 +98,14 @@ namespace N2.Security.Sas
 
             var stringToSign = WebUtility.UrlEncode(string.Join(',', token.SharedResource)) + "\n";
 
-            if (additionalKeys != null)
+            if (additionalKeys != null && token.AdditionalValues != null)
             {
                 foreach (var key in additionalKeys)
                 {
                     var kvp = token.AdditionalValues.FirstOrDefault(q => q.Key == key);
                     if (kvp.Key == null)
                     {
-                        throw new ArgumentException($"Value is missing : {key}");
+                        throw new ArgumentException($"Value is missing from additional values : {key}", nameof(token));
                     }
 
                     stringToSign += $"{kvp.Key}={WebUtility.UrlEncode(kvp.Value)}\n";
@@ -98,6 +113,10 @@ namespace N2.Security.Sas
             }
             if (useNonce)
             {
+                if (string.IsNullOrEmpty(token.Nonce))
+                {
+                    throw new ArgumentException("Nonce is required.", nameof(token));
+                }
                 stringToSign += $"{WebUtility.UrlEncode(token.Nonce)}\n";
             }
 
@@ -171,7 +190,7 @@ namespace N2.Security.Sas
             return signature;
         }
 
-        public static T GetValue<T>(this IDictionary<string, string> items, string key)
+        public static T? GetValue<T>(this IDictionary<string, string> items, string key)
         {
             object result;
             var type = typeof(T);

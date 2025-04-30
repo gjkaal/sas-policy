@@ -9,7 +9,7 @@ namespace N2.Security.Sas
 {
     public class SasTokenValidator : ISasTokenValidator
     {
-        private readonly IMemoryCache _memoryCache;
+        private readonly IMemoryCache? _memoryCache;
         private readonly ISasPolicyRepository _sasPolicyRepository;
         public const int DefaulNonceTimeOutInMinutes = 5;
         private const string DefaultSecret = "N2-secret";
@@ -61,53 +61,80 @@ namespace N2.Security.Sas
         /// <returns>
         /// </returns>
         private SasTokenValidationResult ExecuteValidation(
-            Uri resourcePath,
+            Uri requestUri,
             string resourceMatch,
             ISasTokenParameters token,
-            string[] allowedResources,
+            string[] allowedResourcePermissions,
             string sharedSecret,
             bool useNonce,
             HashType hashType,
             IEnumerable<string> additionalKeys,
             bool ignoreTimeOut)
         {
+            var resourcePath = new Uri(token.SharedResource ?? string.Empty, UriKind.RelativeOrAbsolute);
+            var resourceString = resourcePath.ToString().TrimEnd('/');
+            var requestString = requestUri.ToString().TrimEnd('/');
+            if (requestString.Length < resourceString.Length)
+            {
+                if (!resourceString.StartsWith(requestString))
+                {
+                    return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.ResourceMismatch);
+                }
+            }
+
             if (!Regex.IsMatch(resourcePath.ToString(), resourceMatch.ToString()))
             {
-                return SasTokenValidationResult.Failed(token.SharedResource, TokenResponseCode.SharedResourceExpressionFailed);
+                return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.SharedResourceExpressionFailed);
             }
 
             // check permissions, if provided
-            if (allowedResources.Length > 0 && token.SharedResource.Length > 0)
+            var permissions = new List<string>();
+            if (token.AdditionalValues != null && token.AdditionalValues.Count > 0)
             {
-                if (!CheckPermissions(allowedResources, token.SharedResource))
+                foreach (var kvp in token.AdditionalValues)
                 {
-                    return SasTokenValidationResult.Failed(token.SharedResource, TokenResponseCode.PolicyFailed);
+                    if (kvp.Key == "permissions")
+                    {
+                        var value = kvp.Value.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var permission in value)
+                        {
+                            permissions.Add(permission);
+                        }
+                    }
+                }
+            }
+
+            if (allowedResourcePermissions.Length > 0 && permissions.Count > 0)
+            {
+                if (!CheckPermissions(allowedResourcePermissions, permissions.ToArray()))
+                {
+                    return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.PolicyFailed);
                 }
             }
 
             // check if the signing key is valid
             if (string.IsNullOrEmpty(sharedSecret))
             {
-                return SasTokenValidationResult.Failed(token.SharedResource, TokenResponseCode.InvalidSigningKey);
+                return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.InvalidSigningKey);
             }
 
             var epochCurrent = DateTime.UtcNow - new DateTime(1970, 1, 1);
             var expiryTest = (int)epochCurrent.TotalSeconds;
             if (!ignoreTimeOut && token.Expiry < expiryTest)
             {
-                return SasTokenValidationResult.Failed(token.SharedResource, TokenResponseCode.TokenExpired);
+                return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.TokenExpired);
             }
 
             if (useNonce && _memoryCache != null)
             {
                 if (string.IsNullOrEmpty(token.Nonce))
                 {
-                    return SasTokenValidationResult.Failed(token.SharedResource, TokenResponseCode.NonceIsRequired);
+                    return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.NonceIsRequired);
                 }
 
                 if (TryGetValueFromcache(token.Nonce))
                 {
-                    return SasTokenValidationResult.Failed(token.SharedResource, TokenResponseCode.ResendNotAllowed);
+                    return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.ResendNotAllowed);
                 }
 
                 SetInCache(token.Nonce);
@@ -116,17 +143,17 @@ namespace N2.Security.Sas
             var validateSignature = token.CalcSignature(sharedSecret, useNonce, hashType, additionalKeys);
             if (token.Signature != validateSignature)
             {
-                return SasTokenValidationResult.Failed(token.SharedResource, TokenResponseCode.TokenTampered);
+                return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.TokenTampered);
             }
 
-            return SasTokenValidationResult.Accepted(token.SharedResource);
+            return SasTokenValidationResult.Accepted(resourcePath, permissions.ToArray());
         }
 
-        private static bool CheckPermissions(string[] resourceRequest, string[] permissions)
+        private static bool CheckPermissions(string[] allowedPermissions, string[] permissions)
         {
             foreach (var permission in permissions)
             {
-                if (!Array.Exists(resourceRequest, element => element == permission))
+                if (!Array.Exists(allowedPermissions, element => element == permission))
                 {
                     return false;
                 }
@@ -191,17 +218,17 @@ namespace N2.Security.Sas
 
         public async Task<ISasTokenValidationResult> Validate(Uri resourcePath, ISasTokenParameters token, bool ignoreTimeOut)
         {
-            var p = await _sasPolicyRepository.GetPolicy(token.SigningKeyName);
+            var p = await _sasPolicyRepository.GetPolicy(token.SigningKeyName ?? string.Empty);
             if (p == null)
             {
-                return new SasTokenValidationResult(false, token.SharedResource, TokenResponseCode.PolicyNotFound);
+                return SasTokenValidationResult.Failed(resourcePath, TokenResponseCode.PolicyNotFound);
             }
 
             return ExecuteValidation(
                 resourcePath,
                 p.SharedResourceExpression,
                 token,
-                p.ResourceRequest,
+                p.AllowedPermissions,
                 p.Key,
                 p.UseNonce,
                 p.HashType,

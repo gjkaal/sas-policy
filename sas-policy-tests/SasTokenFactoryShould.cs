@@ -14,8 +14,9 @@ namespace SasPolicy.Tests
         [TestMethod]
         public void UsePoliciesToCreateSasTokens()
         {
+            var uri = new Uri("http://localhost");
             var policy = SASPolicyFactory.CreatePolicy("a", "This is a valid secret", 60);
-            var token = SasTokenFactory.Create(["CalculateThis"], policy);
+            var token = SasTokenFactory.Create(uri, policy);
             Assert.IsNotNull(token);
             var queryString = token.ToQueryString();
             Console.WriteLine(queryString);
@@ -24,22 +25,17 @@ namespace SasPolicy.Tests
         [DataTestMethod]
         [DataRow("skn=a&sr=b&se=c&sig=e&nonce=10", "a", "b")]
         [DataRow("skn=a&sr=c,d&sig=e&nonce=10", "a", "c,d")]
-        [DataRow("skn=a&sig=e&nonce=10", "a", "")]
-        public void ParseTokenParametersFromQueryString(string queryString, string expected, string resources)
+        [DataRow("skn=a&sig=e&nonce=10", "a", null)]
+        public void ParseTokenParametersFromQueryString(string queryString, string expected, string? resource)
         {
-            var sr = resources.Split(',', StringSplitOptions.RemoveEmptyEntries);
             var token = SasTokenFactory.Parse(queryString);
             Assert.IsNotNull(token);
             Assert.AreEqual(expected, token.SigningKeyName);
-            Assert.AreEqual(sr.Length, token.SharedResource.Length);
-            for (var i = 0; i < sr.Length; i++)
-            {
-                Assert.AreEqual(sr[i], token.SharedResource[i]);
-            }
+            Assert.AreEqual(resource, token.SharedResource);
         }
 
         [DataTestMethod]
-        [DataRow("skn=a&sr-b&se=c&sig=e&nonce=10", "a")]
+        [DataRow("skn=a&sr=b&se=c&sig=e&nonce=10", "a")]
         public void ParseTokenParametersFromBase64(string queryString, string expected)
         {
             var data = Convert.ToBase64String(UTF8Encoding.UTF8.GetBytes(queryString));

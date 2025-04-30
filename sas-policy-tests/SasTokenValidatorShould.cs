@@ -15,9 +15,10 @@ namespace SasPolicy.Tests
         [TestMethod]
         public async Task AcceptPolicyToValidateQuerystring()
         {
-            string[] resourceRequest = ["read", "write"];
+            var resourceRequest = new Uri("http://localhost");
             var policy = SASPolicyFactory.CreatePolicy("a", "This is a valid secret", 60);
-            var token = SasTokenFactory.Create(resourceRequest, policy);
+            var token = SasTokenFactory.Create(resourceRequest, policy)
+                .WithValue("Permissions", ["read", "write"]);
             var signature = token.ToQueryString();
             var policyRepository = new Mock<ISasPolicyRepository>();
 
@@ -27,17 +28,27 @@ namespace SasPolicy.Tests
             var validator = new SasTokenValidator(policyRepository.Object);
             var validationResult = await validator.Validate(new Uri("http://localhost"), signature);
             Assert.IsTrue(validationResult.Success);
-            Assert.AreEqual("read,write", validationResult.Resource);
+            Assert.AreEqual("http://localhost/", validationResult.Resource);
+
+            Assert.AreEqual(TokenResponseCode.TokenAccepted, validationResult.TokenResponseCode);
+            Assert.Contains("read", validationResult.Permissions);
+            Assert.Contains("write", validationResult.Permissions);
         }
 
         [TestMethod]
         public async Task FailWhenResourceNotAllowed()
         {
-            string[] resourceRequest = ["read", "write"];
+            var resourceRequest = new Uri("http://localhost");
+
+            // only allow read permissions
             var policy = SASPolicyFactory
                 .CreatePolicy("a", "This is a valid secret", 60)
-                .WithResource(["read"]);
-            var token = SasTokenFactory.Create(resourceRequest, policy);
+                .WithPermissions(["read"]);
+
+            // Token request with read and write permissions
+            var token = SasTokenFactory.Create(resourceRequest, policy)
+                .WithValue("Permissions", ["read", "write"]);
+
             var signature = token.ToQueryString();
             var policyRepository = new Mock<ISasPolicyRepository>();
 
@@ -48,13 +59,34 @@ namespace SasPolicy.Tests
             var validationResult = await validator.Validate(new Uri("http://localhost"), signature);
             Assert.IsFalse(validationResult.Success);
             Assert.AreEqual(TokenResponseCode.PolicyFailed, validationResult.TokenResponseCode);
-            Assert.AreEqual("read,write", validationResult.Resource);
+            Assert.AreEqual("http://localhost/", validationResult.Resource);
+        }
+
+        [TestMethod]
+        public async Task SuccessWhenPathAllowed()
+        {
+            var resourceRequest = new Uri("http://localhost/path");
+            var policy = SASPolicyFactory
+                .CreatePolicy("a", "This is a valid secret", 60)
+                .WithMatch("http://localhost");
+            var token = SasTokenFactory.Create(resourceRequest, policy);
+            var signature = token.ToQueryString();
+            var policyRepository = new Mock<ISasPolicyRepository>();
+
+            policyRepository.Setup(x => x.GetPolicy(It.IsAny<string>()))
+                .ReturnsAsync(policy);
+
+            var validator = new SasTokenValidator(policyRepository.Object);
+            var validationResult = await validator.Validate(resourceRequest, signature);
+            Assert.IsTrue(validationResult.Success);
+            Assert.AreEqual(TokenResponseCode.TokenAccepted, validationResult.TokenResponseCode);
+            Assert.AreEqual("http://localhost/path", validationResult.Resource);
         }
 
         [TestMethod]
         public async Task FailWhenPathNotAllowed()
         {
-            string[] resourceRequest = ["read", "write"];
+            var resourceRequest = new Uri("http://localhost/path");
             var policy = SASPolicyFactory
                 .CreatePolicy("a", "This is a valid secret", 60)
                 .WithMatch("https://localhost");
@@ -66,10 +98,10 @@ namespace SasPolicy.Tests
                 .ReturnsAsync(policy);
 
             var validator = new SasTokenValidator(policyRepository.Object);
-            var validationResult = await validator.Validate(new Uri("http://localhost"), signature);
+            var validationResult = await validator.Validate(resourceRequest, signature);
             Assert.IsFalse(validationResult.Success);
             Assert.AreEqual(TokenResponseCode.SharedResourceExpressionFailed, validationResult.TokenResponseCode);
-            Assert.AreEqual("read,write", validationResult.Resource);
+            Assert.AreEqual("http://localhost/path", validationResult.Resource);
         }
     }
 }

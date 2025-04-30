@@ -5,7 +5,6 @@ namespace N2.Security.Sas
 {
     public static class SASPolicyFactory
     {
-
         public static ISasPolicy CreatePolicy(string skn, string sharedSecret, int timeoutInSeconds, HashType hashType = HashType.Sha256)
         {
             if (timeoutInSeconds < 10)
@@ -18,7 +17,7 @@ namespace N2.Security.Sas
                 Skn = skn,
                 Key = sharedSecret,
                 SharedResourceExpression = ".*",
-                ResourceRequest = [],
+                AllowedPermissions = [],
                 HashType = hashType,
                 UseNonce = false,
                 TokenTimeOut = timeoutInSeconds,
@@ -26,27 +25,18 @@ namespace N2.Security.Sas
             };
         }
 
-        public static ISasPolicy WithResource(this ISasPolicy policy, string[] resource)
+        public static ISasPolicy WithPermissions(this ISasPolicy policy, string[] resourcePermissions)
         {
             if (policy == null)
             {
                 throw new ArgumentNullException(nameof(policy));
             }
-            if (resource == null || resource.Length == 0)
-            {
-                return policy;
-            }
-            if (policy.ResourceRequest == null)
-            {
-                policy.ResourceRequest = resource;
-            }
-            else
-            {
-                var newResource = new string[policy.ResourceRequest.Length + resource.Length];
-                Array.Copy(policy.ResourceRequest, newResource, policy.ResourceRequest.Length);
-                Array.Copy(resource, 0, newResource, policy.ResourceRequest.Length, resource.Length);
-                policy.ResourceRequest = newResource;
-            }
+
+            // Join existing permissions with new permissions
+            var permissions = new string[policy.AllowedPermissions.Length + resourcePermissions.Length];
+            Array.Copy(policy.AllowedPermissions, permissions, policy.AllowedPermissions.Length);
+            Array.Copy(resourcePermissions, 0, permissions, policy.AllowedPermissions.Length, resourcePermissions.Length);
+            policy.AllowedPermissions = permissions;
             return policy;
         }
 

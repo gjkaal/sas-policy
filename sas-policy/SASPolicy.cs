@@ -16,9 +16,9 @@ namespace N2.Security.Sas
         public const int DefaultTokenTimeOut = 300;
 
         /// <summary>
-        /// The permissions requested with this token
+        /// The permissions that are allowed for this policy.
         /// </summary>
-        public string[] ResourceRequest { get; set; }
+        public string[] AllowedPermissions { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the resource identifier.
@@ -78,7 +78,7 @@ namespace N2.Security.Sas
         /// <value>
         /// The type of the hash.
         /// </value>
-        public HashType HashType { get; set; }
+        public HashType HashType { get; set; } = HashType.None;
 
         /// <summary>
         /// Gets or sets the token time out in seconds.

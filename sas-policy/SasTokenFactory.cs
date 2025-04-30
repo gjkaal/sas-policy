@@ -13,7 +13,7 @@ namespace N2.Security.Sas
     public static class SasTokenFactory
     {
         public const int DefaultTokenTimeOutInSeconds = 120;
-
+        public const int NonceLength = 12;
         private static readonly Random Random = new();
 
         // skn = signing key name
@@ -35,6 +35,16 @@ namespace N2.Security.Sas
             {
                 encodedData = authorization[0];
             }
+            if (string.IsNullOrEmpty(encodedData))
+            {
+                return new SasTokenParameters
+                {
+                    SigningKeyName = string.Empty,
+                    SharedResource = string.Empty,
+                    Expiry = 0,
+                    Invalid = true
+                };
+            }
             // Decode from base64
             var decodedBytes = Convert.FromBase64String(encodedData);
             var decodedString = System.Text.Encoding.UTF8.GetString(decodedBytes);
@@ -50,24 +60,17 @@ namespace N2.Security.Sas
                 additionalList.Add(kvp.Key, kvp.Value);
             }
 
-            var srList = Array.Empty<string>();
-            var sr = args.FirstOrDefault(q => q.Key == "sr");
-            if (sr.Value is not null)
-            {
-                srList = sr.Value.Split([','], StringSplitOptions.RemoveEmptyEntries);
-            }
-
             var token = new SasTokenParameters
             {
                 SigningKeyName = args.FirstOrDefault(q => q.Key == "skn").Value,
-                SharedResource = srList,
+                SharedResource = args.FirstOrDefault(q => q.Key == "sr").Value,
                 Expiry = GetInt(args.FirstOrDefault(q => q.Key == "se").Value),
                 Signature = args.FirstOrDefault(q => q.Key == "sig").Value,
                 Nonce = args.FirstOrDefault(q => q.Key == "nonce").Value,
                 AdditionalValues = additionalList
             };
             token.Invalid = string.IsNullOrEmpty(token.SigningKeyName)
-                || token.SharedResource.Length == 0
+                || string.IsNullOrEmpty(token.SharedResource)
                 || string.IsNullOrEmpty(token.Signature)
                 || token.Expiry <= 0;
             return token;
@@ -79,6 +82,9 @@ namespace N2.Security.Sas
             {
                 return new SasTokenParameters
                 {
+                    SigningKeyName = string.Empty,
+                    SharedResource = string.Empty,
+                    Expiry = 0,
                     Invalid = true
                 };
             }
@@ -113,7 +119,7 @@ namespace N2.Security.Sas
         ///// <summary>
         ///// Create signed sastoken using a policy
         ///// </summary>
-        public static SasTokenParameters Create(string[] sharedResourceRequest, IDictionary<string, string> additionalValues, ISasPolicy policy)
+        public static SasTokenParameters Create(Uri sharedResourceRequest, IDictionary<string, string> additionalValues, ISasPolicy policy)
         {
             return ExecuteCreate(sharedResourceRequest, policy.TokenTimeOut, policy.Skn, additionalValues, policy.UseNonce, policy.HashType, policy.Key);
         }
@@ -121,7 +127,7 @@ namespace N2.Security.Sas
         ///// <summary>
         ///// Create signed sastoken using a policy
         ///// </summary>
-        public static SasTokenParameters Create(string[] sharedResourceRequest, ISasPolicy policy)
+        public static SasTokenParameters Create(Uri sharedResourceRequest, ISasPolicy policy)
         {
             return ExecuteCreate(sharedResourceRequest, policy.TokenTimeOut, policy.Skn, null, policy.UseNonce, policy.HashType, policy.Key);
         }
@@ -129,7 +135,7 @@ namespace N2.Security.Sas
         /// <summary>
         ///     Create signed sastoken with no additional values
         /// </summary>
-        public static SasTokenParameters Create(string[] sharedResourceRequest, ISasPolicy policy, bool calculateSignature)
+        public static SasTokenParameters Create(Uri sharedResourceRequest, ISasPolicy policy, bool calculateSignature)
         {
             var token = ExecuteCreate(
                 sharedResourceRequest,
@@ -143,22 +149,22 @@ namespace N2.Security.Sas
             return token;
         }
 
-        public static SasTokenParameters Create(string[] sharedResourceRequest, HashType hashType, string signingKeyName, string sharedSecret)
+        public static SasTokenParameters Create(Uri sharedResourceRequest, HashType hashType, string signingKeyName, string sharedSecret)
         {
             return ExecuteCreate(sharedResourceRequest, DefaultTokenTimeOutInSeconds, signingKeyName, null, false, hashType, sharedSecret);
         }
 
-        public static SasTokenParameters Create(string[] sharedResourceRequest, HashType hashType, string signingKeyName, string sharedSecret, bool useNonce)
+        public static SasTokenParameters Create(Uri sharedResourceRequest, HashType hashType, string signingKeyName, string sharedSecret, bool useNonce)
         {
             return ExecuteCreate(sharedResourceRequest, DefaultTokenTimeOutInSeconds, signingKeyName, null, useNonce, hashType, sharedSecret);
         }
 
-        public static SasTokenParameters Create(string[] sharedResourceRequest, HashType hashType, string signingKeyName, string sharedSecret, int timeoutInSeconds)
+        public static SasTokenParameters Create(Uri sharedResourceRequest, HashType hashType, string signingKeyName, string sharedSecret, int timeoutInSeconds)
         {
             return ExecuteCreate(sharedResourceRequest, timeoutInSeconds, signingKeyName, null, false, hashType, sharedSecret);
         }
 
-        public static SasTokenParameters Create(string[] sharedResourceRequest, HashType hashType, string signingKeyName, string sharedSecret, bool useNonce, int timeoutInSeconds)
+        public static SasTokenParameters Create(Uri sharedResourceRequest, HashType hashType, string signingKeyName, string sharedSecret, bool useNonce, int timeoutInSeconds)
         {
             return ExecuteCreate(sharedResourceRequest, timeoutInSeconds, signingKeyName, null, useNonce, hashType, sharedSecret);
         }
@@ -169,14 +175,14 @@ namespace N2.Security.Sas
         /// </summary>
         /// <param name="sharedResourceRequest">Requested access to the shared resource.</param>
         /// <param name="timeoutInSeconds">The timeout for the token in seconds.</param>
-        /// <param name="signingKey">The signing key.</param>
+        /// <param name="signingKeyName">The signing key name.</param>
         /// <param name="additionalValues">The additional values that should be included.</param>
         /// <param name="useNonce">if set to <c>true</c> then use the nonce in the signature.</param>
         /// <param name="hashType">Type of the hash.</param>
         /// <param name="sharedSecret">if set to a valid string then the calculation is executed immediately.</param>
         /// <returns>SASToken.</returns>
         public static SasTokenParameters Create(
-            string[] sharedResourceRequest,
+            Uri sharedResourceRequest,
             HashType hashType,
             string signingKeyName,
             string sharedSecret,
@@ -194,7 +200,7 @@ namespace N2.Security.Sas
         /// <param name="sharedResourceRequest">Requested access to the shared resource.</param>
         /// <param name="timeoutInSeconds">The timeout for the token in seconds.</param>
         /// <param name="signingKeyName">The name for the signing key.</param>
-        /// <param name="additionalValues">The additional values that should be included.</param>
+        /// <param name="additionalValues">The additional values that should be included, e.g. requested permissions.</param>
         /// <param name="useNonce">if set to <c>true</c> then use the nonce in the signature.</param>
         /// <param name="hashType">Type of the hash.</param>
         /// <param name="sharedSecret">if set to a valid string then the calculation is executed immediately.</param>
@@ -202,10 +208,10 @@ namespace N2.Security.Sas
         /// <param name="includeAdditionalKeys">if set to <c>true</c> then use the additional keys in the signature.</param>
         /// <returns>SASToken.</returns>
         private static SasTokenParameters ExecuteCreate(
-            string[] sharedResourceRequest,
+            Uri sharedResourceRequest,
             int timeoutInSeconds,
             string signingKeyName,
-            IDictionary<string, string> additionalValues,
+            IDictionary<string, string>? additionalValues,
             bool useNonce,
             HashType hashType,
             string sharedSecret)
@@ -219,7 +225,7 @@ namespace N2.Security.Sas
 
             var sasToken = new SasTokenParameters
             {
-                SharedResource = sharedResourceRequest,
+                SharedResource = sharedResourceRequest.ToString(),
                 Expiry = expiry,
                 SigningKeyName = signingKeyName,
                 AdditionalValues = additionalValues,
@@ -227,7 +233,7 @@ namespace N2.Security.Sas
             };
             if (useNonce)
             {
-                sasToken.Nonce = CreateNewNonce(12);
+                sasToken.Nonce = CreateNewNonce(NonceLength);
             }
             sasToken.Signature = sasToken.CalcSignature(
               sharedSecret,

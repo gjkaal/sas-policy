@@ -46,9 +46,9 @@ namespace N2.Security.Sas
         int TokenTimeOut { get; set; }
 
         /// <summary>
-        /// The permissions requested with this token
+        /// The permissions that are allowed for this policy.
         /// </summary>
-        string[] ResourceRequest { get; set; }
+        string[] AllowedPermissions { get; set; }
 
         /// <summary>
         /// Regular expression that is used to match with the resource name.

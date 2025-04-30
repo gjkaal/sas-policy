@@ -160,3 +160,139 @@ Reading the configuration is done while initializing the `SasPolicyFromSettings`
     }
 }
 ```
+
+## Javascript Client
+
+The client can be used in a JavaScript application to generate a SAS token and use it in an HTTP request.
+Save the following code in a file named `sasTokenUtils.js`. These methods are adapted to use 
+JavaScript's built-in crypto module for hashing.
+
+``` javascript
+const crypto = require('crypto');
+
+/**
+ * Calculates the hash of a string using the specified hash type and shared secret.
+ * @param {string} sharedSecret - The shared secret used for hashing.
+ * @param {string} hashType - The hash type (e.g., 'MD5', 'SHA1', 'SHA256', 'SHA384', 'SHA512').
+ * @param {string} stringToSign - The string to be hashed.
+ * @returns {string} - The calculated hash.
+ */
+function calculateHash(sharedSecret, hashType, stringToSign) {
+    let hmac;
+    switch (hashType.toUpperCase()) {
+        case 'MD5':
+            const md5 = crypto.createHash('md5');
+            md5.update(stringToSign + '\n' + sharedSecret, 'utf8');
+            return md5.digest('hex').toLowerCase();
+        case 'SHA1':
+            hmac = crypto.createHmac('sha1', sharedSecret);
+            break;
+        case 'SHA256':
+            hmac = crypto.createHmac('sha256', sharedSecret);
+            break;
+        case 'SHA384':
+            hmac = crypto.createHmac('sha384', sharedSecret);
+            break;
+        case 'SHA512':
+            hmac = crypto.createHmac('sha512', sharedSecret);
+            break;
+        default:
+            throw new Error(`Hashing using ${hashType} is not supported`);
+    }
+
+    hmac.update(stringToSign, 'utf8');
+    return hmac.digest('base64');
+}
+
+/**
+ * Calculates the signature of a SAS token.
+ * @param {Object} token - The SAS token parameters.
+ * @param {string} sharedSecret - The shared secret used for hashing.
+ * @param {boolean} useNonce - Whether to include the nonce in the signature.
+ * @param {string} hashType - The hash type (e.g., 'MD5', 'SHA1', 'SHA256', 'SHA384', 'SHA512').
+ * @param {Array<string>} [additionalKeys] - Additional keys to include in the signature.
+ * @returns {string} - The calculated signature.
+ */
+function calcSignature(token, sharedSecret, useNonce, hashType, additionalKeys = []) {
+    if (sharedSecret.length < 20) {
+        throw new Error('Invalid signing key: The shared secret must be at least 20 characters long.');
+    }
+
+    let stringToSign = encodeURIComponent(token.SharedResource.join(',')) + '\n';
+
+    if (additionalKeys) {
+        for (const key of additionalKeys) {
+            if (!token.AdditionalValues || !token.AdditionalValues[key]) {
+                throw new Error(`Value is missing from additional values: ${key}`);
+            }
+            stringToSign += `${key}=${encodeURIComponent(token.AdditionalValues[key])}\n`;
+        }
+    }
+
+    if (useNonce) {
+        if (!token.Nonce) {
+            throw new Error('Nonce is required.');
+        }
+        stringToSign += `${encodeURIComponent(token.Nonce)}\n`;
+    }
+
+    stringToSign += token.Expiry;
+    return calculateHash(sharedSecret, hashType, stringToSign);
+}
+
+module.exports = { calculateHash, calcSignature };
+```
+
+Example usage of the client to generate a SAS token and use it in an HTTP request, in a real world scenario,
+
+``` javascript
+const axios = require('axios');
+const { calcSignature } = require('./sasTokenUtils'); // Import the calcSignature function
+
+// Example token parameters
+const token = {
+    SharedResource: ['https://filestorage.example.com/files/myfile.txt'], // The resource to access
+    AdditionalValues: { permission: 'read' }, // Additional parameters (e.g., permissions)
+    Nonce: 'uniqueNonce123', // Unique identifier to prevent replay attacks
+    Expiry: Math.floor(Date.now() / 1000) + 600, // Token valid for 10 minutes
+};
+
+// Shared secret and hash type
+const sharedSecret = 'superSecretKey1234567890';
+const hashType = 'SHA256';
+const useNonce = true;
+const additionalKeys = ['permission'];
+
+async function accessFile() {
+    try {
+        // Step 1: Calculate the signature
+        const signature = calcSignature(token, sharedSecret, useNonce, hashType, additionalKeys);
+
+        // Step 2: Construct the Base64-encoded token
+        const tokenString = `skn=${encodeURIComponent('fileAccessKey')}`
+            + `&sr=${encodeURIComponent(token.SharedResource.join(','))}`
+            + `&se=${token.Expiry}`
+            + `&sig=${encodeURIComponent(signature)}`
+            + `&nonce=${encodeURIComponent(token.Nonce)}`;
+        const base64EncodedToken = Buffer.from(tokenString).toString('base64');
+
+        // Step 3: Make the HTTP request to access the file
+        const response = await axios.get(token.SharedResource[0], {
+            headers: {
+                Authorization: `Bearer ${base64EncodedToken}`, // Include the token in the Authorization header
+            },
+        });
+
+        // Step 4: Handle the response
+        console.log('File Content:', response.data);
+    } catch (error) {
+        console.error('Error accessing file:', error.message);
+    }
+}
+
+// Execute the function
+accessFile();
+
+
+```
+\

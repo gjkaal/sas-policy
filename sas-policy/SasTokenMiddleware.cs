@@ -50,7 +50,7 @@ public class SasTokenMiddleware
         }
 
         // Check if the signing key is valid, returns null if not found
-        var signingKeyClaims = await _claimsRepository.GetPolicy(token.SigningKeyName);
+        var signingKeyClaims = await _claimsRepository.GetPolicy(token.SigningKeyName ?? string.Empty);
         if (signingKeyClaims == null)
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -63,11 +63,6 @@ public class SasTokenMiddleware
         var claims = new List<Claim>();
         claims.Add(new Claim(ClaimTypes.Name, token.SigningKeyName));
         claims.Add(new Claim(ClaimTypes.Expiration, token.Expiry.ToString()));
-
-        foreach (var resource in token.SharedResource)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, resource));
-        }
 
         // Add additional claims based on the `skn` parameter
         if (signingKeyClaims.HasClaims)

@@ -1,36 +1,43 @@
+using System;
+
+using Microsoft.Extensions.Primitives;
+
 namespace N2.Security.Sas
 {
     public class SasTokenValidationResult : ISasTokenValidationResult
     {
         public SasTokenValidationResult()
         {
+            Resource = string.Empty;
         }
 
-        public static SasTokenValidationResult Accepted(string[] resourceRequest)
+        public static SasTokenValidationResult Accepted(Uri resourceRequest, StringValues permissions)
         {
-            return new SasTokenValidationResult(true, resourceRequest, TokenResponseCode.TokenAccepted);
+            return new SasTokenValidationResult(true, resourceRequest, permissions, TokenResponseCode.TokenAccepted);
         }
 
-        public static SasTokenValidationResult NotAccepted(string[] resourceRequest)
+        public static SasTokenValidationResult NotAccepted(Uri resourceRequest)
         {
-            return new SasTokenValidationResult(false, resourceRequest, TokenResponseCode.NotAccepted);
+            return new SasTokenValidationResult(false, resourceRequest, string.Empty, TokenResponseCode.NotAccepted);
         }
 
-        public static SasTokenValidationResult Failed(string[] resourceRequest, TokenResponseCode responseCode)
+        public static SasTokenValidationResult Failed(Uri resourceRequest, TokenResponseCode responseCode)
         {
-            return new SasTokenValidationResult(false, resourceRequest, responseCode);
+            return new SasTokenValidationResult(false, resourceRequest, string.Empty, responseCode);
         }
 
-        public SasTokenValidationResult(bool success, string[] resourceRequest, TokenResponseCode code)
+        private SasTokenValidationResult(bool success, Uri resourceRequest, StringValues permissions, TokenResponseCode code)
         {
             Success = success;
-            Resource = string.Join(',', resourceRequest);
+            Resource = resourceRequest.ToString();
             TokenResponseCode = code;
+            Permissions = permissions.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries);
         }
 
         public bool Success { get; private set; }
         public TokenResponseCode TokenResponseCode { get; private set; }
         public string Resource { get; private set; }
+        public string[] Permissions { get; private set; } = Array.Empty<string>();
 
         /// <summary>
         /// Performs an implicit conversion from <see cref="SasTokenValidationResult" /> to <see cref="System.Boolean" />.

@@ -30,6 +30,8 @@ namespace N2.Security.Sas
         PolicyNotFound = 11,
         [Description("Shared secret does not comply to policies (too short). Check if the KeyName and Shared Secret are not switched")]
         SharedKeyTooShort = 12,
+        [Description("Resource mismatch detected.")]
+        ResourceMismatch = 13,
     }
 
     public static class TokenResponseCodeExtensions
